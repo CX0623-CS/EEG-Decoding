@@ -8,9 +8,7 @@ from einops.layers.torch import Rearrange
 from torch.nn.utils import spectral_norm
 
 
-# =========================================================
-# 基础模块
-# =========================================================
+
 class FeedForward(nn.Module):
     def __init__(self, dim, hidden_dim, dropout=0.):
         super().__init__()
@@ -58,8 +56,7 @@ class Transformer(nn.Module):
             x = ff(x) + x
         return self.norm(x)
 
-# =========================================================
-# =========================================================
+
 
 
 class LightSNTimeformerV2(nn.Module):
@@ -76,7 +73,7 @@ class LightSNTimeformerV2(nn.Module):
         temporal_kernels = [7, 11, 15]
         channels_per_scale = num_kernel // len(temporal_kernels)
         
-        # 1. 多尺度卷积编码
+        # 多尺度卷积编码
         self.multiscale_convs = nn.ModuleList([
             nn.Sequential(
                 nn.Conv2d(1, channels_per_scale, (1, k), padding=(0, k//2)),
@@ -86,7 +83,7 @@ class LightSNTimeformerV2(nn.Module):
             ) for k in temporal_kernels
         ])
         
-        # 2. 空间卷积
+        # 空间卷积
         self.spatial_conv = nn.Sequential(
             nn.Conv2d(num_kernel, num_kernel, (num_chan, 1)),
             nn.BatchNorm2d(num_kernel),
@@ -94,7 +91,7 @@ class LightSNTimeformerV2(nn.Module):
             nn.Dropout(dropout),
         )
         
-        # 3. 多尺度池化
+        # 多尺度池化
         self.pool_sizes = [max(1, int(num_time * ratio)) for ratio in [0.25, 0.125, 0.0625]]
         self.multiscale_pool = nn.ModuleList([
             nn.AdaptiveAvgPool2d((1, size)) for size in self.pool_sizes
@@ -103,11 +100,11 @@ class LightSNTimeformerV2(nn.Module):
         # 池化权重学习
         self.pool_weights = nn.Parameter(torch.ones(len(self.pool_sizes)))
         
-        # 4. Transformer编码器
+        # Transformer编码器
         self.to_patch = Rearrange("b k 1 t -> b t k")
         self.transformer = Transformer(num_kernel, depth, heads, dim_head, mlp_dim, dropout)
         
-        # 5. 特征增强
+        # 特征增强
         self.feature_enhance = nn.Sequential(
             nn.Linear(num_kernel, num_kernel * 2),
             nn.ELU(),
@@ -116,7 +113,7 @@ class LightSNTimeformerV2(nn.Module):
             nn.LayerNorm(num_kernel)
         )
         
-        # 6. 分类头
+        # 分类头
         self.attention_pool = nn.Sequential(
             nn.Linear(num_kernel, num_kernel // 2),
             nn.Tanh(),
@@ -136,7 +133,7 @@ class LightSNTimeformerV2(nn.Module):
     def forward(self, eeg):
         b, c, t = eeg.shape
         
-        # 1. 多尺度卷积编码
+        # 多尺度卷积编码
         multiscale_features = []
         for conv in self.multiscale_convs:
             feat = conv(eeg.unsqueeze(1))
@@ -145,10 +142,10 @@ class LightSNTimeformerV2(nn.Module):
         # 拼接多尺度特征
         x = torch.cat(multiscale_features, dim=1)
         
-        # 2. 空间卷积
+        # 空间卷积
         x = self.spatial_conv(x)
         
-        # 3. 多尺度池化 + 加权融合
+        # 多尺度池化 + 加权融合
         pool_features = []
         for pool in self.multiscale_pool:
             pooled = pool(x)
@@ -168,22 +165,15 @@ class LightSNTimeformerV2(nn.Module):
         for i, feat in enumerate(pool_features):
             multiscale_feat += feat * pool_weights[i]
         
-        # 4. 特征增强 + 残差连接
+        # 特征增强 + 残差连接
         enhanced_feat = self.feature_enhance(multiscale_feat) + multiscale_feat
         
-        # 5. 分类
+        # 分类
         return self.mlp_head(enhanced_feat)
 
 if __name__ == "__main__":
-    # 运行维度检查测试
-    test_with_dimension_check()
-    
-    print("\n" + "=" * 60)
-    print("生产版本测试")
-    print("=" * 60)
-    
-    # 测试生产版本
     data = torch.randn(4, 32, 1000)
     model_prod = LightSNTimeformerV2()
     output_prod = model_prod(data)
-    print(f"生产版本: 输入 {data.shape} -> 输出 {output_prod.shape}")
+
+
