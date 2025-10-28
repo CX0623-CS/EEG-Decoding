@@ -13,21 +13,11 @@
 ### 谱归一化约束的轻量Transformer解码结构（Spectrally Normalized Lightweight Timeformer）
 
 
-Attention层中使用了光谱归一化（Spectral Normalization）：
-
-self.to_out = nn.Sequential(
-    spectral_norm(nn.Linear(inner_dim, dim), eps=1e-8),
-    nn.Dropout(dropout)
-)
-
-
-能抑制特征爆炸、稳定Transformer训练过程、并强化跨被试泛化性。
-
-
+Attention层中使用谱归一化：能抑制特征爆炸、稳定Transformer训练过程、并强化跨被试泛化性。
 传统EEG Transformer（如EEG-Conformer, EEGViT）普遍存在：参数量大；注意力不稳定；容易过拟合个体特征、跨被试性能差。
 
 通过谱归一化 + 局部时间输入 + 浅层堆叠，使Transformer能够：
 专注于局部时间-频率依赖建模，提升泛化性和训练稳定性，同时显著减小模型复杂度。
-提出一种引入光谱归一化约束的轻量级Transformer解码结构（LightSNTimeformer），通过在时序特征映射阶段引入谱约束与多尺度输入机制，增强了注意力的稳定性与EEG跨被试泛化性能。
+提出一种引入光谱归一化约束的轻量级Transformer解码结构，通过在时序特征映射阶段引入谱约束与多尺度输入机制，增强了注意力的稳定性与EEG跨被试泛化性能。
 
 
